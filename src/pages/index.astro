@@ -7,7 +7,6 @@ export const prerender = true
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Login — Carl's Jr. Backoffice</title>
-  <link rel="stylesheet" href="/styles/login.css">
 </head>
 <body class="login-body">
   <div class="login-wrapper">
@@ -16,6 +15,7 @@ export const prerender = true
         <img src="/carls-logo.png" alt="Carl's Jr." class="login-logo" />
         <p class="login-subtitle">Panel de Administración</p>
       </div>
+
       <div class="login-form">
         <div class="form-group">
           <label>Correo electrónico</label>
@@ -33,41 +33,46 @@ export const prerender = true
       Powered by <strong>ADmira Digital Networks</strong>
     </div>
   </div>
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
   <script>
-    const { createClient } = supabase
+    import { createClient } from '@supabase/supabase-js'
+
     const db = createClient(
       'https://gbklqpbcllhdixiuxwzt.supabase.co',
       'sb_publishable_478TOeFf5POv09rZ58BeyQ_BA8rY8cf'
     )
 
+    const loginBtn = document.getElementById('login-btn')
+    const errorMsg = document.getElementById('error-msg')
+
     async function checkSession() {
       const { data } = await db.auth.getSession()
-      if (data.session) window.location.href = '/dashboard'
+      if (data.session) {
+        window.location.href = '/dashboard'
+      }
     }
+
     checkSession()
 
-    document.getElementById('login-btn').addEventListener('click', async () => {
+    loginBtn.addEventListener('click', async () => {
       const email = document.getElementById('email').value.trim()
       const password = document.getElementById('password').value
-      const errorMsg = document.getElementById('error-msg')
-      const btn = document.getElementById('login-btn')
 
       if (!email || !password) {
         errorMsg.textContent = 'Ingresa tu correo y contraseña.'
         return
       }
 
-      btn.textContent = 'Ingresando...'
-      btn.disabled = true
+      loginBtn.textContent = 'Ingresando...'
+      loginBtn.disabled = true
       errorMsg.textContent = ''
 
       const { error } = await db.auth.signInWithPassword({ email, password })
 
       if (error) {
         errorMsg.textContent = 'Correo o contraseña incorrectos.'
-        btn.textContent = 'Ingresar'
-        btn.disabled = false
+        loginBtn.textContent = 'Ingresar'
+        loginBtn.disabled = false
         return
       }
 
@@ -75,16 +80,13 @@ export const prerender = true
     })
 
     document.getElementById('password').addEventListener('keydown', (e) => {
-      if (e.key === 'Enter') document.getElementById('login-btn').click()
+      if (e.key === 'Enter') loginBtn.click()
     })
   </script>
 </body>
 </html>
+
 <style>
-:root {
-  --carls-red: #ED1C24;
-  --carls-red-dark: #c41520;
-}
 .login-body {
   min-height: 100vh;
   background: #1a1a1a;
@@ -95,9 +97,8 @@ export const prerender = true
   padding: 20px;
   position: relative;
   overflow: hidden;
-  font-family: 'Segoe UI', Arial, sans-serif;
-  margin: 0;
 }
+
 .login-body::before {
   content: '';
   position: absolute;
@@ -110,6 +111,7 @@ export const prerender = true
   opacity: 0.15;
   pointer-events: none;
 }
+
 .login-wrapper {
   width: 100%;
   max-width: 420px;
@@ -120,6 +122,7 @@ export const prerender = true
   position: relative;
   z-index: 1;
 }
+
 .login-card {
   background: #242424;
   border-radius: 16px;
@@ -128,6 +131,7 @@ export const prerender = true
   overflow: hidden;
   border: 1px solid rgba(255,255,255,0.06);
 }
+
 .login-header {
   padding: 36px 32px 24px;
   text-align: center;
@@ -137,7 +141,12 @@ export const prerender = true
   gap: 12px;
   border-bottom: 1px solid rgba(255,255,255,0.06);
 }
-.login-logo { height: 52px; object-fit: contain; }
+
+.login-logo {
+  height: 52px;
+  object-fit: contain;
+}
+
 .login-subtitle {
   color: rgba(255,255,255,0.4);
   font-size: 11px;
@@ -145,13 +154,20 @@ export const prerender = true
   text-transform: uppercase;
   font-weight: 600;
 }
+
 .login-form {
   padding: 28px 32px 32px;
   display: flex;
   flex-direction: column;
   gap: 18px;
 }
-.form-group { display: flex; flex-direction: column; gap: 6px; }
+
+.form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
 .form-group label {
   font-size: 11px;
   font-weight: 700;
@@ -159,6 +175,7 @@ export const prerender = true
   text-transform: uppercase;
   letter-spacing: 0.08em;
 }
+
 .form-group input {
   background: #2e2e2e;
   border: 1px solid rgba(255,255,255,0.08);
@@ -166,12 +183,26 @@ export const prerender = true
   border-radius: 8px;
   padding: 10px 14px;
   font-size: 14px;
-  outline: none;
-  box-sizing: border-box;
-  width: 100%;
 }
-.form-group input:focus { border-color: var(--carls-red); background: #333; }
-.error-msg { color: #ff6b6b; font-size: 12px; font-weight: 600; min-height: 16px; text-align: center; }
+
+.form-group input::placeholder {
+  color: rgba(255,255,255,0.2);
+}
+
+.form-group input:focus {
+  border-color: var(--carls-red);
+  outline: none;
+  background: #333;
+}
+
+.error-msg {
+  color: #ff6b6b;
+  font-size: 12px;
+  font-weight: 600;
+  min-height: 16px;
+  text-align: center;
+}
+
 .btn-login {
   background: var(--carls-red);
   color: white;
@@ -183,12 +214,29 @@ export const prerender = true
   font-weight: 700;
   letter-spacing: 0.08em;
   text-transform: uppercase;
+  transition: background 0.15s, transform 0.1s;
   width: 100%;
   margin-top: 4px;
-  transition: background 0.15s;
 }
-.btn-login:hover:not(:disabled) { background: var(--carls-red-dark); }
-.btn-login:disabled { opacity: 0.6; cursor: not-allowed; }
-.login-footer { color: rgba(255,255,255,0.25); font-size: 11px; text-align: center; }
-.login-footer strong { color: rgba(255,255,255,0.45); }
+
+.btn-login:hover:not(:disabled) {
+  background: var(--carls-red-dark);
+  transform: translateY(-1px);
+}
+
+.btn-login:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.login-footer {
+  color: rgba(255,255,255,0.25);
+  font-size: 11px;
+  text-align: center;
+  letter-spacing: 0.05em;
+}
+
+.login-footer strong {
+  color: rgba(255,255,255,0.45);
+}
 </style>
