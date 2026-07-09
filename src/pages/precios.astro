@@ -1,0 +1,312 @@
+---
+import Layout from '../layouts/layout.astro'
+---
+<Layout title="Editor de Precios">
+  <div id="auth-check" style="display:none">
+    <div class="card">
+      <div class="section-header">
+        <div style="display:flex;align-items:center;gap:12px;">
+          <a href="/sucursales" class="back-btn" title="Regresar">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+              <polyline points="15 18 9 12 15 6"/>
+            </svg>
+            Regresar
+          </a>
+          <h2 id="page-title">Editor de Precios</h2>
+        </div>
+        <div class="header-actions">
+          <span id="sucursal-badge" style="font-size:11px;background:rgba(255,255,255,0.2);padding:3px 10px;border-radius:12px;"></span>
+          <button id="save-btn" style="background:white;color:var(--carls-red);border:none;padding:7px 18px;border-radius:4px;font-size:13px;font-weight:700;cursor:pointer;letter-spacing:0.05em;">
+            GUARDAR
+          </button>
+        </div>
+      </div>
+
+      <div class="search-bar" style="justify-content:space-between;">
+        <span id="plantilla-label" style="font-size:12px;color:var(--text-muted);font-weight:600;"></span>
+        <div style="display:flex;gap:8px;align-items:center;">
+          <label style="font-size:12px;color:var(--text-muted);">Plantilla:</label>
+          <select id="plantilla-select" style="font-size:12px;border:1px solid var(--border-gray);border-radius:4px;padding:4px 8px;">
+            <option value="">Cargando...</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="table-wrapper">
+        <table>
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>Producto</th>
+              <th>Burger</th>
+              <th>Doble</th>
+              <th>Combo</th>
+              <th>Combo Doble</th>
+            </tr>
+          </thead>
+          <tbody id="precios-body">
+            <tr><td colspan="6" class="loading-cell">Cargando productos...</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="upgrades-section">
+        <div class="upgrades-header">
+          <span>AGRANDA TU COMBO</span>
+        </div>
+        <table>
+          <thead>
+            <tr>
+              <th>Opción</th>
+              <th>Precio</th>
+            </tr>
+          </thead>
+          <tbody id="upgrades-body">
+            <tr><td colspan="2" class="loading-cell">Cargando...</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <div id="player-url-section" class="card" style="margin-top:16px;">
+      <div class="section-header">
+        <h2>URL del Player</h2>
+      </div>
+      <div style="padding:16px;display:flex;align-items:center;gap:12px;">
+        <code id="player-url" style="flex:1;background:#f5f5f5;padding:8px 12px;border-radius:4px;font-size:12px;color:#333;"></code>
+        <button id="copy-url-btn" class="btn-primary" style="white-space:nowrap;">Copiar URL</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="toast" style="display:none"></div>
+</Layout>
+
+<script>
+  import { createClient } from '@supabase/supabase-js'
+
+  const db = createClient(
+    'https://gbklqpbcllhdixiuxwzt.supabase.co',
+    'sb_publishable_478TOeFf5POv09rZ58BeyQ_BA8rY8cf'
+  )
+
+  const PLAYER_BASE = 'https://bmendez-admin.github.io/digital-signage-player/'
+
+  const params = new URLSearchParams(window.location.search)
+  const sucursalSlug = params.get('sucursal') || 'demo-01'
+
+  let sucursalId = null
+  let plantillaId = null
+  let plantillaSlug = null
+  let pendingChanges = {}
+  let pendingUpgrades = {}
+
+  function showToast(msg, type = 'success') {
+    const t = document.getElementById('toast')
+    t.textContent = msg
+    t.className = `toast ${type}`
+    t.style.display = 'block'
+    setTimeout(() => { t.style.display = 'none' }, 3000)
+  }
+
+  async function init() {
+    const { data: session } = await db.auth.getSession()
+    if (!session.session) { window.location.href = '/'; return }
+    document.getElementById('auth-check').style.display = 'block'
+
+    const { data: suc } = await db.from('sucursales').select('id, nombre').eq('slug', sucursalSlug).single()
+    if (!suc) { showToast('Sucursal no encontrada', 'error'); return }
+
+    sucursalId = suc.id
+    document.getElementById('page-title').textContent = 'Editor de Precios'
+    document.getElementById('sucursal-badge').textContent = suc.nombre
+
+    const { data: spData } = await db
+      .from('sucursal_plantillas')
+      .select('plantilla_id, plantillas(id, nombre, slug)')
+      .eq('sucursal_id', sucursalId)
+
+    const select = document.getElementById('plantilla-select')
+    select.innerHTML = ''
+
+    if (!spData || !spData.length) {
+      select.innerHTML = '<option>Sin plantillas</option>'
+      return
+    }
+
+    spData.forEach(sp => {
+      const opt = document.createElement('option')
+      opt.value = sp.plantillas.slug
+      opt.dataset.id = sp.plantillas.id
+      opt.textContent = sp.plantillas.nombre
+      select.appendChild(opt)
+    })
+
+    select.addEventListener('change', () => {
+      const opt = select.options[select.selectedIndex]
+      plantillaSlug = opt.value
+      plantillaId = opt.dataset.id
+      pendingChanges = {}
+      pendingUpgrades = {}
+      loadPrecios()
+      updatePlayerUrl()
+    })
+
+    plantillaSlug = spData[0].plantillas.slug
+    plantillaId = spData[0].plantillas.id
+    await loadPrecios()
+    updatePlayerUrl()
+  }
+
+  function updatePlayerUrl() {
+    const url = `${PLAYER_BASE}?sucursal=${sucursalSlug}&plantilla=${plantillaSlug}`
+    const el = document.getElementById('player-url')
+    if (el) el.textContent = url
+
+    document.getElementById('copy-url-btn').onclick = () => {
+      navigator.clipboard.writeText(url)
+      showToast('URL copiada al portapapeles')
+    }
+  }
+
+  async function loadPrecios() {
+    const tbody = document.getElementById('precios-body')
+    tbody.innerHTML = '<tr><td colspan="6" class="loading-cell">Cargando...</td></tr>'
+
+    const { data: productos } = await db
+      .from('productos')
+      .select('*, precios(*)')
+      .eq('plantilla_id', plantillaId)
+      .order('orden')
+
+    if (!productos || !productos.length) {
+      tbody.innerHTML = '<tr><td colspan="6" class="loading-cell">No hay productos en esta plantilla.</td></tr>'
+      return
+    }
+
+    tbody.innerHTML = productos.map(p => {
+      const precio = p.precios.find(pr => pr.sucursal_id === sucursalId) || {}
+      const field = (key, val) => `
+        <input type="number"
+          class="price-input"
+          data-producto="${p.id}"
+          data-precio-id="${precio.id || ''}"
+          data-field="${key}"
+          value="${val !== null && val !== undefined ? val : ''}"
+          placeholder="—"
+          step="0.01"
+          min="0"
+          style="width:90px;text-align:right;"
+        />`
+
+      return `<tr>
+        <td style="color:var(--text-muted);font-weight:700;">${p.numero}</td>
+        <td>
+          <strong>${p.nombre}</strong>
+          <div style="font-size:11px;color:var(--text-muted);font-style:italic;">${p.subtitulo || ''}</div>
+        </td>
+        <td>${field('burger', precio.burger)}</td>
+        <td>${field('doble', precio.doble)}</td>
+        <td>${field('combo', precio.combo)}</td>
+        <td>${field('combo_doble', precio.combo_doble)}</td>
+      </tr>`
+    }).join('')
+
+    document.querySelectorAll('.price-input').forEach(input => {
+      input.addEventListener('input', (e) => {
+        const productoId = e.target.dataset.producto
+        const field = e.target.dataset.field
+        const val = e.target.value === '' ? null : parseFloat(e.target.value)
+        if (!pendingChanges[productoId]) pendingChanges[productoId] = {}
+        pendingChanges[productoId][field] = val
+        e.target.style.borderColor = 'var(--carls-yellow)'
+        e.target.style.background = '#fffbf0'
+      })
+    })
+
+    await loadUpgrades()
+  }
+
+  async function loadUpgrades() {
+    const { data: upgrades } = await db
+      .from('upgrades')
+      .select('*')
+      .eq('plantilla_id', plantillaId)
+      .eq('sucursal_id', sucursalId)
+      .order('orden')
+
+    const tbody = document.getElementById('upgrades-body')
+    if (!upgrades || !upgrades.length) {
+      tbody.innerHTML = '<tr><td colspan="2" class="loading-cell">Sin upgrades.</td></tr>'
+      return
+    }
+
+    tbody.innerHTML = upgrades.map(u => `
+      <tr>
+        <td><strong>${u.nombre}</strong></td>
+        <td>
+          <input type="number"
+            class="upgrade-input"
+            data-upgrade-id="${u.id}"
+            value="${u.precio}"
+            step="0.01" min="0"
+            style="width:90px;text-align:right;"
+          />
+        </td>
+      </tr>
+    `).join('')
+
+    document.querySelectorAll('.upgrade-input').forEach(input => {
+      input.addEventListener('input', (e) => {
+        const id = e.target.dataset.upgradeId
+        pendingUpgrades[id] = parseFloat(e.target.value)
+        e.target.style.borderColor = 'var(--carls-yellow)'
+        e.target.style.background = '#fffbf0'
+      })
+    })
+  }
+
+  document.getElementById('save-btn').addEventListener('click', async () => {
+    const btn = document.getElementById('save-btn')
+    btn.textContent = 'Guardando...'
+    btn.disabled = true
+
+    let hasError = false
+
+    for (const [productoId, fields] of Object.entries(pendingChanges)) {
+      const { error } = await db
+        .from('precios')
+        .update({ ...fields, updated_at: new Date().toISOString() })
+        .eq('producto_id', productoId)
+        .eq('sucursal_id', sucursalId)
+
+      if (error) { hasError = true }
+    }
+
+    for (const [upgradeId, precio] of Object.entries(pendingUpgrades)) {
+      const { error } = await db
+        .from('upgrades')
+        .update({ precio, updated_at: new Date().toISOString() })
+        .eq('id', upgradeId)
+
+      if (error) { hasError = true }
+    }
+
+    if (hasError) {
+      showToast('Error al guardar algunos precios', 'error')
+    } else {
+      pendingChanges = {}
+      pendingUpgrades = {}
+      document.querySelectorAll('.price-input, .upgrade-input').forEach(i => {
+        i.style.borderColor = ''
+        i.style.background = ''
+      })
+      showToast('Precios actualizados correctamente')
+    }
+
+    btn.textContent = 'GUARDAR'
+    btn.disabled = false
+  })
+
+  init()
+</script>

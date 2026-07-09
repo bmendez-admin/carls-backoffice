@@ -1,0 +1,242 @@
+---
+import '../styles/global.css'
+---
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Login — Carl's Jr. Backoffice</title>
+</head>
+<body class="login-body">
+  <div class="login-wrapper">
+    <div class="login-card">
+      <div class="login-header">
+        <img src="/carls-logo.png" alt="Carl's Jr." class="login-logo" />
+        <p class="login-subtitle">Panel de Administración</p>
+      </div>
+
+      <div class="login-form">
+        <div class="form-group">
+          <label>Correo electrónico</label>
+          <input type="email" id="email" placeholder="admin@carlsjr.com" autocomplete="email" />
+        </div>
+        <div class="form-group">
+          <label>Contraseña</label>
+          <input type="password" id="password" placeholder="••••••••" autocomplete="current-password" />
+        </div>
+        <div id="error-msg" class="error-msg"></div>
+        <button class="btn-login" id="login-btn">Ingresar</button>
+      </div>
+    </div>
+    <div class="login-footer">
+      Powered by <strong>ADmira Digital Networks</strong>
+    </div>
+  </div>
+
+  <script>
+    import { createClient } from '@supabase/supabase-js'
+
+    const db = createClient(
+      'https://gbklqpbcllhdixiuxwzt.supabase.co',
+      'sb_publishable_478TOeFf5POv09rZ58BeyQ_BA8rY8cf'
+    )
+
+    const loginBtn = document.getElementById('login-btn')
+    const errorMsg = document.getElementById('error-msg')
+
+    async function checkSession() {
+      const { data } = await db.auth.getSession()
+      if (data.session) {
+        window.location.href = '/dashboard'
+      }
+    }
+
+    checkSession()
+
+    loginBtn.addEventListener('click', async () => {
+      const email = document.getElementById('email').value.trim()
+      const password = document.getElementById('password').value
+
+      if (!email || !password) {
+        errorMsg.textContent = 'Ingresa tu correo y contraseña.'
+        return
+      }
+
+      loginBtn.textContent = 'Ingresando...'
+      loginBtn.disabled = true
+      errorMsg.textContent = ''
+
+      const { error } = await db.auth.signInWithPassword({ email, password })
+
+      if (error) {
+        errorMsg.textContent = 'Correo o contraseña incorrectos.'
+        loginBtn.textContent = 'Ingresar'
+        loginBtn.disabled = false
+        return
+      }
+
+      window.location.href = '/dashboard'
+    })
+
+    document.getElementById('password').addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') loginBtn.click()
+    })
+  </script>
+</body>
+</html>
+
+<style>
+.login-body {
+  min-height: 100vh;
+  background: #1a1a1a;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  position: relative;
+  overflow: hidden;
+}
+
+.login-body::before {
+  content: '';
+  position: absolute;
+  top: -40%;
+  left: -20%;
+  width: 70%;
+  height: 140%;
+  background: var(--carls-red);
+  border-radius: 0 60% 60% 0;
+  opacity: 0.15;
+  pointer-events: none;
+}
+
+.login-wrapper {
+  width: 100%;
+  max-width: 420px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 20px;
+  position: relative;
+  z-index: 1;
+}
+
+.login-card {
+  background: #242424;
+  border-radius: 16px;
+  width: 100%;
+  box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+  overflow: hidden;
+  border: 1px solid rgba(255,255,255,0.06);
+}
+
+.login-header {
+  padding: 36px 32px 24px;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  border-bottom: 1px solid rgba(255,255,255,0.06);
+}
+
+.login-logo {
+  height: 52px;
+  object-fit: contain;
+}
+
+.login-subtitle {
+  color: rgba(255,255,255,0.4);
+  font-size: 11px;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  font-weight: 600;
+}
+
+.login-form {
+  padding: 28px 32px 32px;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.form-group label {
+  font-size: 11px;
+  font-weight: 700;
+  color: rgba(255,255,255,0.4);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.form-group input {
+  background: #2e2e2e;
+  border: 1px solid rgba(255,255,255,0.08);
+  color: white;
+  border-radius: 8px;
+  padding: 10px 14px;
+  font-size: 14px;
+}
+
+.form-group input::placeholder {
+  color: rgba(255,255,255,0.2);
+}
+
+.form-group input:focus {
+  border-color: var(--carls-red);
+  outline: none;
+  background: #333;
+}
+
+.error-msg {
+  color: #ff6b6b;
+  font-size: 12px;
+  font-weight: 600;
+  min-height: 16px;
+  text-align: center;
+}
+
+.btn-login {
+  background: var(--carls-red);
+  color: white;
+  border: none;
+  padding: 12px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  transition: background 0.15s, transform 0.1s;
+  width: 100%;
+  margin-top: 4px;
+}
+
+.btn-login:hover:not(:disabled) {
+  background: var(--carls-red-dark);
+  transform: translateY(-1px);
+}
+
+.btn-login:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.login-footer {
+  color: rgba(255,255,255,0.25);
+  font-size: 11px;
+  text-align: center;
+  letter-spacing: 0.05em;
+}
+
+.login-footer strong {
+  color: rgba(255,255,255,0.45);
+}
+</style>

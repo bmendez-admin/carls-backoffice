@@ -1,0 +1,257 @@
+---
+import Layout from '../layouts/layout.astro'
+---
+<Layout title="Plantillas">
+  <div id="auth-check" style="display:none">
+    <div class="card">
+      <div class="section-header">
+        <h2>Plantillas</h2>
+        <div class="header-actions">
+          <a href="/dashboard" class="back-btn" title="Regresar">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+              <polyline points="15 18 9 12 15 6"/>
+            </svg>
+            Regresar
+          </a>
+        </div>
+      </div>
+
+      <div class="filters-bar">
+        <div class="filter-search">
+          <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+          </svg>
+          <input type="text" id="search" placeholder="Buscar plantilla..." />
+          <button id="clear-search" class="clear-btn">✕</button>
+        </div>
+
+        <div class="filter-group">
+          <label>Sucursal</label>
+          <select id="filter-sucursal">
+            <option value="">Todas</option>
+          </select>
+        </div>
+
+        <div class="filter-group">
+          <label>Productos</label>
+          <select id="filter-productos">
+            <option value="">Cualquier cantidad</option>
+            <option value="1-5">1 a 5</option>
+            <option value="6-10">6 a 10</option>
+            <option value="11+">Más de 10</option>
+          </select>
+        </div>
+
+        <button id="clear-filters" class="clear-filters-btn">Limpiar filtros</button>
+        <span id="results-count" class="results-count"></span>
+      </div>
+
+      <div id="plantillas-container"></div>
+    </div>
+  </div>
+</Layout>
+
+<script>
+  import { createClient } from '@supabase/supabase-js'
+
+  const db = createClient(
+    'https://gbklqpbcllhdixiuxwzt.supabase.co',
+    'sb_publishable_478TOeFf5POv09rZ58BeyQ_BA8rY8cf'
+  )
+
+  let allData = []
+
+  async function loadPlantillas() {
+    const container = document.getElementById('plantillas-container')
+    container.innerHTML = '<div class="loading-cell">Cargando plantillas...</div>'
+
+    const { data: plantillas, error } = await db
+      .from('plantillas')
+      .select(`
+        *,
+        productos(id, nombre, subtitulo, numero, orden),
+        sucursal_plantillas(sucursal_id, sucursales(id, nombre, slug, activa))
+      `)
+      .order('nombre')
+
+    if (error || !plantillas) {
+      container.innerHTML = '<div class="loading-cell">Error al cargar plantillas.</div>'
+      return
+    }
+
+    allData = plantillas
+    renderPlantillas(plantillas)
+  }
+
+  function renderPlantillas(data) {
+    const container = document.getElementById('plantillas-container')
+    const count = document.getElementById('results-count')
+    count.textContent = `${data.length} plantilla${data.length !== 1 ? 's' : ''}`
+
+    if (!data.length) {
+      container.innerHTML = '<div class="loading-cell">No se encontraron plantillas.</div>'
+      return
+    }
+
+    container.innerHTML = data.map(p => {
+      const productos = [...(p.productos || [])].sort((a, b) => a.orden - b.orden)
+      const sucursales = p.sucursal_plantillas || []
+
+      const productosHTML = productos.map(prod => `
+        <div class="producto-item">
+          <span class="prod-num">${prod.numero}</span>
+          <div>
+            <div class="prod-nombre">${prod.nombre}</div>
+            <div class="prod-sub">${prod.subtitulo || ''}</div>
+          </div>
+        </div>
+      `).join('')
+
+      const sucursalesHTML = sucursales.map(sp => `
+        <a href="/precios?sucursal=${sp.sucursales?.slug}" class="suc-tag ${sp.sucursales?.activa ? 'active' : 'inactive'}">
+          <span class="status-dot ${sp.sucursales?.activa ? 'active' : 'inactive'}"></span>
+          ${sp.sucursales?.nombre || '—'}
+        </a>
+      `).join('')
+
+      return `
+        <div class="plantilla-card" id="plantilla-${p.id}">
+          <div class="plantilla-header">
+            <div class="plantilla-info">
+              <h3 class="plantilla-nombre">${p.nombre}</h3>
+              <code class="plantilla-slug">${p.slug}</code>
+              ${p.descripcion ? `<p class="plantilla-desc">${p.descripcion}</p>` : ''}
+            </div>
+            <div class="plantilla-stats">
+              <div class="stat">
+                <span class="stat-num">${productos.length}</span>
+                <span class="stat-label">Productos</span>
+              </div>
+              <div class="stat">
+                <span class="stat-num">${sucursales.length}</span>
+                <span class="stat-label">Sucursales</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="plantilla-body">
+            <div class="section-block">
+              <div class="block-header" onclick="toggleSection('prod-${p.id}', this)">
+                <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="18" height="7"/>
+                </svg>
+                Productos de esta plantilla
+                <svg class="chevron" xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                  <polyline points="6 9 12 15 18 9"/>
+                </svg>
+              </div>
+              <div class="block-content" id="prod-${p.id}" style="display:none">
+                <div class="productos-grid">
+                  ${productosHTML || '<span class="empty-msg">Sin productos registrados</span>'}
+                </div>
+              </div>
+            </div>
+
+            <div class="section-block">
+              <div class="block-header" onclick="toggleSection('suc-${p.id}', this)">
+                <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
+                  <polyline points="9 22 9 12 15 12 15 22"/>
+                </svg>
+                Sucursales que usan esta plantilla
+                <svg class="chevron" xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                  <polyline points="6 9 12 15 18 9"/>
+                </svg>
+              </div>
+              <div class="block-content" id="suc-${p.id}" style="display:none">
+                <div class="sucursales-tags">
+                  ${sucursalesHTML || '<span class="empty-msg">Sin sucursales asignadas</span>'}
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      `
+    }).join('')
+  }
+
+  window.toggleSection = function(id, header) {
+    const content = document.getElementById(id)
+    const chevron = header.querySelector('.chevron')
+    const isOpen = content.style.display !== 'none'
+    content.style.display = isOpen ? 'none' : 'block'
+    chevron.style.transform = isOpen ? 'rotate(0deg)' : 'rotate(180deg)'
+  }
+
+  function populateSucursalFilter(data) {
+    const select = document.getElementById('filter-sucursal')
+    const nombres = new Set()
+    data.forEach(p => {
+      p.sucursal_plantillas.forEach(sp => {
+        if (sp.sucursales?.nombre) nombres.add(sp.sucursales.nombre)
+      })
+    })
+    nombres.forEach(nombre => {
+      const opt = document.createElement('option')
+      opt.value = nombre
+      opt.textContent = nombre
+      select.appendChild(opt)
+    })
+  }
+
+  function applyFilters() {
+    const q = document.getElementById('search').value.toLowerCase()
+    const sucursal = document.getElementById('filter-sucursal').value
+    const productos = document.getElementById('filter-productos').value
+
+    const filtered = allData.filter(p => {
+      const matchSearch = !q ||
+        p.nombre.toLowerCase().includes(q) ||
+        p.slug.toLowerCase().includes(q) ||
+        (p.descripcion || '').toLowerCase().includes(q)
+
+      const matchSucursal = !sucursal ||
+        p.sucursal_plantillas.some(sp => sp.sucursales?.nombre === sucursal)
+
+      const count = (p.productos || []).length
+      const matchProductos = !productos ||
+        (productos === '1-5' && count >= 1 && count <= 5) ||
+        (productos === '6-10' && count >= 6 && count <= 10) ||
+        (productos === '11+' && count > 10)
+
+      return matchSearch && matchSucursal && matchProductos
+    })
+
+    renderPlantillas(filtered)
+  }
+
+  document.getElementById('search').addEventListener('input', applyFilters)
+  document.getElementById('filter-sucursal').addEventListener('change', applyFilters)
+  document.getElementById('filter-productos').addEventListener('change', applyFilters)
+
+  document.getElementById('clear-search').addEventListener('click', () => {
+    document.getElementById('search').value = ''
+    applyFilters()
+  })
+
+  document.getElementById('clear-filters').addEventListener('click', () => {
+    document.getElementById('search').value = ''
+    document.getElementById('filter-sucursal').value = ''
+    document.getElementById('filter-productos').value = ''
+    applyFilters()
+  })
+
+  async function loadPlantillasWithFilters() {
+    await loadPlantillas()
+    populateSucursalFilter(allData)
+  }
+
+  async function init() {
+    const { data: session } = await db.auth.getSession()
+    if (!session.session) { window.location.href = '/'; return }
+    document.getElementById('auth-check').style.display = 'block'
+    await loadPlantillasWithFilters()
+  }
+
+  init()
+</script>
