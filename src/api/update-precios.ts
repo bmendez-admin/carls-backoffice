@@ -1,8 +1,9 @@
+import type { APIRoute } from 'astro'
 import { createClient } from '@supabase/supabase-js'
 
 export const prerender = false
 
-export async function POST({ request }) {
+export const POST: APIRoute = async ({ request }) => {
   const serviceKey = import.meta.env.SUPABASE_SERVICE_KEY
 
   if (!serviceKey) {
@@ -24,7 +25,7 @@ export async function POST({ request }) {
   for (const [productoId, fields] of Object.entries(precios || {})) {
     const { error } = await db
       .from('precios')
-      .update({ ...fields, updated_at: new Date().toISOString() })
+      .update({ ...(fields as object), updated_at: new Date().toISOString() })
       .eq('producto_id', productoId)
       .eq('sucursal_id', sucursalId)
 
