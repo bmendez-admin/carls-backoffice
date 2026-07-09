@@ -33,48 +33,47 @@ export const prerender = true
     </div>
   </div>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script type="text/javascript">
-    const { createClient } = supabase
-    const db = createClient(
-      'https://gbklqpbcllhdixiuxwzt.supabase.co',
-      'sb_publishable_478TOeFf5POv09rZ58BeyQ_BA8rY8cf'
-    )
+  <script>
+    window.addEventListener('load', async function() {
+      const { createClient } = window.supabase
+      const db = createClient(
+        'https://gbklqpbcllhdixiuxwzt.supabase.co',
+        'sb_publishable_478TOeFf5POv09rZ58BeyQ_BA8rY8cf'
+      )
 
-    async function checkSession() {
       const { data } = await db.auth.getSession()
-      if (data.session) window.location.href = '/dashboard'
-    }
-    checkSession()
+      if (data.session) { window.location.href = '/dashboard'; return }
 
-    document.getElementById('login-btn').addEventListener('click', async () => {
-      const email = document.getElementById('email').value.trim()
-      const password = document.getElementById('password').value
-      const errorMsg = document.getElementById('error-msg')
-      const btn = document.getElementById('login-btn')
+      document.getElementById('login-btn').addEventListener('click', async () => {
+        const email = document.getElementById('email').value.trim()
+        const password = document.getElementById('password').value
+        const errorMsg = document.getElementById('error-msg')
+        const btn = document.getElementById('login-btn')
 
-      if (!email || !password) {
-        errorMsg.textContent = 'Ingresa tu correo y contraseña.'
-        return
-      }
+        if (!email || !password) {
+          errorMsg.textContent = 'Ingresa tu correo y contraseña.'
+          return
+        }
 
-      btn.textContent = 'Ingresando...'
-      btn.disabled = true
-      errorMsg.textContent = ''
+        btn.textContent = 'Ingresando...'
+        btn.disabled = true
+        errorMsg.textContent = ''
 
-      const { error } = await db.auth.signInWithPassword({ email, password })
+        const { error } = await db.auth.signInWithPassword({ email, password })
 
-      if (error) {
-        errorMsg.textContent = 'Correo o contraseña incorrectos.'
-        btn.textContent = 'Ingresar'
-        btn.disabled = false
-        return
-      }
+        if (error) {
+          errorMsg.textContent = 'Correo o contraseña incorrectos.'
+          btn.textContent = 'Ingresar'
+          btn.disabled = false
+          return
+        }
 
-      window.location.href = '/dashboard'
-    })
+        window.location.href = '/dashboard'
+      })
 
-    document.getElementById('password').addEventListener('keydown', (e) => {
-      if (e.key === 'Enter') document.getElementById('login-btn').click()
+      document.getElementById('password').addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') document.getElementById('login-btn').click()
+      })
     })
   </script>
 </body>
