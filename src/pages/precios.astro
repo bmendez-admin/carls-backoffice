@@ -271,37 +271,32 @@ import Layout from '../layouts/layout.astro'
     btn.textContent = 'Guardando...'
     btn.disabled = true
 
-    let hasError = false
-
-    for (const [productoId, fields] of Object.entries(pendingChanges)) {
-      const { error } = await db
-        .from('precios')
-        .update({ ...fields, updated_at: new Date().toISOString() })
-        .eq('producto_id', productoId)
-        .eq('sucursal_id', sucursalId)
-
-      if (error) { hasError = true }
-    }
-
-    for (const [upgradeId, precio] of Object.entries(pendingUpgrades)) {
-      const { error } = await db
-        .from('upgrades')
-        .update({ precio, updated_at: new Date().toISOString() })
-        .eq('id', upgradeId)
-
-      if (error) { hasError = true }
-    }
-
-    if (hasError) {
-      showToast('Error al guardar algunos precios', 'error')
-    } else {
-      pendingChanges = {}
-      pendingUpgrades = {}
-      document.querySelectorAll('.price-input, .upgrade-input').forEach(i => {
-        i.style.borderColor = ''
-        i.style.background = ''
+    try {
+      const res = await fetch('/api/update-precios', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          precios: pendingChanges,
+          upgrades: pendingUpgrades,
+          sucursalId
+        })
       })
-      showToast('Precios actualizados correctamente')
+
+      const data = await res.json()
+
+      if (!res.ok || data.error) {
+        showToast('Error al guardar: ' + (data.error || 'intenta de nuevo'), 'error')
+      } else {
+        pendingChanges = {}
+        pendingUpgrades = {}
+        document.querySelectorAll('.price-input, .upgrade-input').forEach(i => {
+          i.style.borderColor = ''
+          i.style.background = ''
+        })
+        showToast('Precios actualizados correctamente')
+      }
+    } catch (e) {
+      showToast('Error de conexion', 'error')
     }
 
     btn.textContent = 'GUARDAR'
