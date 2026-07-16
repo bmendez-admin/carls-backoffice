@@ -26,9 +26,10 @@ export const POST: APIRoute = async ({ request }) => {
   for (const [productoId, fields] of Object.entries(precios || {})) {
     const { error } = await db
       .from('precios')
-      .update({ ...(fields as object), updated_at: new Date().toISOString() })
-      .eq('producto_id', productoId)
-      .eq('sucursal_id', sucursalId)
+      .upsert(
+        { producto_id: productoId, sucursal_id: sucursalId, ...(fields as object), updated_at: new Date().toISOString() },
+        { onConflict: 'producto_id,sucursal_id' }
+      )
     if (error) errors.push(error.message)
   }
 
