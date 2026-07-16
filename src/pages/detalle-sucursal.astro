@@ -35,7 +35,7 @@ import Layout from "../layouts/layout.astro";
 
             <div
                 id="plantillas-container"
-                style="padding:20px;display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:16px;"
+                style="padding:24px;display:grid;grid-template-columns:repeat(auto-fill,minmax(340px,1fr));gap:20px;"
             >
                 <div class="loading-cell">Cargando plantillas...</div>
             </div>
@@ -307,13 +307,11 @@ import Layout from "../layouts/layout.astro";
         for (const check of checks) {
             const plantillaId = check.value;
 
-            await db
-                .from("sucursal_plantillas")
-                .insert({
-                    sucursal_id: sucursalId,
-                    plantilla_id: plantillaId,
-                    activa: true,
-                });
+            await db.from("sucursal_plantillas").insert({
+                sucursal_id: sucursalId,
+                plantilla_id: plantillaId,
+                activa: true,
+            });
 
             const { data: productos } = await db
                 .from("productos")
@@ -324,7 +322,7 @@ import Layout from "../layouts/layout.astro";
                 const preciosInsert = productos.map((p) => ({
                     producto_id: p.id,
                     sucursal_id: sucursalId,
-                    burger: 0,
+                    burger: null,
                     doble: null,
                     combo: null,
                     combo_doble: null,

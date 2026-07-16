@@ -24,21 +24,30 @@ import Layout from "../layouts/layout.astro";
         </div>
       </div>
 
-      <div class="search-bar" style="justify-content:space-between;align-items:center;">
+      <div class="search-bar" style="justify-content:flex-start;align-items:center;gap:10px;">
         <span style="font-size:12px;color:var(--text-muted);font-weight:600;">Vista de plantilla:</span>
-        <span id="plantilla-label" style="font-size:13px;font-weight:700;color:var(--text-dark);background:#f0f0f0;padding:4px 12px;border-radius:4px;"></span>
+        <span id="plantilla-label" style="font-size:13px;font-weight:700;color:var(--carls-yellow);background:#1a1a1a;padding:4px 14px;border-radius:4px;letter-spacing:0.04em;"></span>
+      </div>
+
+      <div id="global-changer" style="display:none;padding:12px 16px;background:#fffbf0;border-bottom:1px solid var(--carls-yellow);align-items:center;gap:16px;flex-wrap:wrap;">
+        <span style="font-size:12px;font-weight:700;color:var(--text-dark);text-transform:uppercase;letter-spacing:0.05em;">Cambio Global:</span>
+        <div style="display:flex;align-items:center;gap:8px;">
+          <input type="number" id="global-pct" placeholder="%" min="-100" max="999" step="1" style="width:80px;text-align:center;border:1px solid var(--border-gray);border-radius:4px;padding:5px 8px;font-size:13px;" />
+          <button id="btn-apply-pct" style="background:var(--carls-red);color:white;border:none;border-radius:4px;padding:6px 14px;font-size:12px;font-weight:700;cursor:pointer;">Aplicar %</button>
+        </div>
+        <div style="width:1px;height:24px;background:var(--border-gray);"></div>
+        <div style="display:flex;align-items:center;gap:8px;">
+          <input type="number" id="global-val" placeholder="Valor fijo" min="0" step="1" style="width:110px;text-align:center;border:1px solid var(--border-gray);border-radius:4px;padding:5px 8px;font-size:13px;" />
+          <button id="btn-apply-val" style="background:var(--carls-red);color:white;border:none;border-radius:4px;padding:6px 14px;font-size:12px;font-weight:700;cursor:pointer;">Aplicar Valor</button>
+        </div>
       </div>
 
       <div class="table-wrapper">
         <table>
           <thead>
-            <tr>
+            <tr id="tabla-headers">
               <th>#</th>
               <th>Producto</th>
-              <th>Burger</th>
-              <th>Doble</th>
-              <th>Combo</th>
-              <th>Combo Doble</th>
             </tr>
           </thead>
           <tbody id="precios-body">
@@ -91,11 +100,19 @@ import Layout from "../layouts/layout.astro";
   const params = new URLSearchParams(window.location.search);
   const sucursalSlug = params.get("sucursal") || "demo-01";
 
+  const LABELS = {
+    burger: "Precio",
+    doble: "Doble",
+    combo: "Combo",
+    combo_doble: "Combo Doble"
+  };
+
   let sucursalId = null;
   let plantillaId = null;
   let plantillaSlug = null;
   let pendingChanges = {};
   let pendingUpgrades = {};
+  let camposActivos = [];
 
   function showToast(msg, type = "success") {
     const t = document.getElementById("toast");
@@ -138,7 +155,6 @@ import Layout from "../layouts/layout.astro";
 
     plantillaSlug = sp.plantillas.slug;
     plantillaId = sp.plantillas.id;
-
     document.getElementById("plantilla-label").textContent = sp.plantillas.nombre;
 
     await loadPrecios();
@@ -149,7 +165,6 @@ import Layout from "../layouts/layout.astro";
     const url = `${PLAYER_BASE}?sucursal=${sucursalSlug}&plantilla=${plantillaSlug}`;
     const el = document.getElementById("player-url");
     if (el) el.textContent = url;
-
     document.getElementById("copy-url-btn").onclick = () => {
       navigator.clipboard.writeText(url);
       showToast("URL copiada al portapapeles");
@@ -171,20 +186,41 @@ import Layout from "../layouts/layout.astro";
       return;
     }
 
+    camposActivos = ["burger", "doble", "combo", "combo_doble"].filter(campo =>
+      productos.some(p => {
+        const precio = p.precios.find(pr => pr.sucursal_id === sucursalId);
+        return precio && precio[campo] !== null;
+      })
+    );
+
+    if (camposActivos.length === 0) {
+      camposActivos = ["burger"];
+    }
+
+    const headers = document.getElementById("tabla-headers");
+    headers.innerHTML = `
+      <th>#</th>
+      <th>Producto</th>
+      ${camposActivos.map(c => `<th>${LABELS[c]}</th>`).join("")}
+    `;
+
     tbody.innerHTML = productos.map(p => {
       const precio = p.precios.find(pr => pr.sucursal_id === sucursalId) || {};
-      const field = (key, val) => `
-        <input type="number"
-          class="price-input"
-          data-producto="${p.id}"
-          data-precio-id="${precio.id || ""}"
-          data-field="${key}"
-          value="${val !== null && val !== undefined ? val : ""}"
-          placeholder="—"
-          step="0.01"
-          min="0"
-          style="width:90px;text-align:right;"
-        />`;
+      const celdas = camposActivos.map(campo => `
+        <td>
+          <input type="number"
+            class="price-input"
+            data-producto="${p.id}"
+            data-precio-id="${precio.id || ""}"
+            data-field="${campo}"
+            value="${precio[campo] !== null && precio[campo] !== undefined ? precio[campo] : ""}"
+            placeholder="—"
+            step="0.01"
+            min="0"
+            style="width:90px;text-align:right;"
+          />
+        </td>
+      `).join("");
 
       return `<tr>
         <td style="color:var(--text-muted);font-weight:700;">${p.numero}</td>
@@ -192,10 +228,7 @@ import Layout from "../layouts/layout.astro";
           <strong>${p.nombre}</strong>
           <div style="font-size:11px;color:var(--text-muted);font-style:italic;">${p.subtitulo || ""}</div>
         </td>
-        <td>${field("burger", precio.burger)}</td>
-        <td>${field("doble", precio.doble)}</td>
-        <td>${field("combo", precio.combo)}</td>
-        <td>${field("combo_doble", precio.combo_doble)}</td>
+        ${celdas}
       </tr>`;
     }).join("");
 
@@ -210,6 +243,8 @@ import Layout from "../layouts/layout.astro";
         e.target.style.background = "#fffbf0";
       });
     });
+
+    document.getElementById("global-changer").style.display = "flex";
 
     await loadUpgrades();
   }
@@ -252,6 +287,39 @@ import Layout from "../layouts/layout.astro";
       });
     });
   }
+
+  function applyGlobalChange(tipo) {
+    const inputs = document.querySelectorAll(".price-input");
+    const pct = parseFloat(document.getElementById("global-pct").value);
+    const val = parseFloat(document.getElementById("global-val").value);
+
+    inputs.forEach(input => {
+      const currentVal = parseFloat(input.value) || 0;
+      let newVal;
+
+      if (tipo === "pct" && !isNaN(pct)) {
+        newVal = Math.round(currentVal * (1 + pct / 100));
+      } else if (tipo === "val" && !isNaN(val)) {
+        newVal = val;
+      } else {
+        return;
+      }
+
+      input.value = newVal;
+      input.style.borderColor = "var(--carls-yellow)";
+      input.style.background = "#fffbf0";
+
+      const productoId = input.dataset.producto;
+      const field = input.dataset.field;
+      if (!pendingChanges[productoId]) pendingChanges[productoId] = {};
+      pendingChanges[productoId][field] = newVal;
+    });
+
+    showToast(tipo === "pct" ? `${pct > 0 ? "+" : ""}${pct}% aplicado a todos los precios` : `Valor $${val} aplicado a todos los precios`);
+  }
+
+  document.getElementById("btn-apply-pct").addEventListener("click", () => applyGlobalChange("pct"));
+  document.getElementById("btn-apply-val").addEventListener("click", () => applyGlobalChange("val"));
 
   document.getElementById("save-btn").addEventListener("click", async () => {
     const btn = document.getElementById("save-btn");
