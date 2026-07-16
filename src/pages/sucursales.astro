@@ -8,12 +8,13 @@ import Layout from '../layouts/layout.astro'
       <div class="section-header">
         <h2>Sucursales</h2>
         <div class="header-actions">
-          <a href="/dashboard" class="back-btn" title="Regresar">
+          <a href="/dashboard" class="back-btn">
             <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
               <polyline points="15 18 9 12 15 6"/>
             </svg>
             Regresar
           </a>
+          <button id="btn-nueva-sucursal" class="btn-primary">+ Nueva Sucursal</button>
         </div>
       </div>
 
@@ -23,9 +24,8 @@ import Layout from '../layouts/layout.astro'
             <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
           </svg>
           <input type="text" id="search" placeholder="Buscar por nombre o slug..." />
-          <button id="clear-search" class="clear-btn" title="Limpiar">✕</button>
+          <button id="clear-search" class="clear-btn">✕</button>
         </div>
-
         <div class="filter-group">
           <label>Estado</label>
           <select id="filter-estado">
@@ -34,17 +34,13 @@ import Layout from '../layouts/layout.astro'
             <option value="inactiva">Inactiva</option>
           </select>
         </div>
-
         <div class="filter-group">
           <label>Plantilla</label>
           <select id="filter-plantilla">
             <option value="">Todas</option>
           </select>
         </div>
-
-        <button id="clear-filters" class="clear-filters-btn">
-          Limpiar filtros
-        </button>
+        <button id="clear-filters" class="clear-filters-btn">Limpiar filtros</button>
       </div>
 
       <div class="results-bar">
@@ -69,6 +65,55 @@ import Layout from '../layouts/layout.astro'
       </div>
     </div>
   </div>
+
+  <div id="modal-nueva" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.45);z-index:500;align-items:center;justify-content:center;">
+    <div style="background:white;border-radius:8px;width:460px;box-shadow:0 8px 32px rgba(0,0,0,0.18);overflow:hidden;">
+      <div class="section-header">
+        <h2>Nueva Sucursal</h2>
+        <button id="modal-nueva-close" style="background:none;border:none;color:white;font-size:18px;cursor:pointer;">✕</button>
+      </div>
+      <div style="padding:20px;display:flex;flex-direction:column;gap:14px;">
+        <div>
+          <label style="font-size:11px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.05em;display:block;margin-bottom:6px;">Nombre</label>
+          <input type="text" id="nueva-nombre" placeholder="Ej. Sucursal Guadalajara" />
+        </div>
+        <div>
+          <label style="font-size:11px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.05em;display:block;margin-bottom:6px;">Slug</label>
+          <div style="display:flex;gap:8px;">
+            <input type="text" id="nueva-slug" placeholder="ej. guadalajara-01" style="flex:1;" />
+            <button id="btn-sugerir-slug" style="background:none;border:1px solid var(--border-gray);border-radius:4px;padding:6px 12px;font-size:11px;font-weight:700;color:var(--text-muted);cursor:pointer;white-space:nowrap;transition:all 0.15s;">Sugerir</button>
+          </div>
+          <span style="font-size:11px;color:var(--text-muted);margin-top:4px;display:block;">Solo minúsculas, números y guiones.</span>
+        </div>
+        <div>
+          <label style="font-size:11px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.05em;display:block;margin-bottom:8px;">Plantillas</label>
+          <div id="nueva-plantillas" style="display:flex;flex-direction:column;gap:8px;"></div>
+        </div>
+        <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:4px;">
+          <button id="modal-nueva-cancel" style="background:none;border:1px solid var(--border-gray);border-radius:4px;padding:7px 16px;font-size:13px;cursor:pointer;">Cancelar</button>
+          <button id="modal-nueva-save" class="btn-primary">Crear Sucursal</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div id="modal-eliminar" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.45);z-index:500;align-items:center;justify-content:center;">
+    <div style="background:white;border-radius:8px;width:380px;box-shadow:0 8px 32px rgba(0,0,0,0.18);overflow:hidden;">
+      <div class="section-header" style="background:#c41520;">
+        <h2>Eliminar Sucursal</h2>
+        <button id="modal-eliminar-close" style="background:none;border:none;color:white;font-size:18px;cursor:pointer;">✕</button>
+      </div>
+      <div style="padding:20px;display:flex;flex-direction:column;gap:16px;">
+        <p id="modal-eliminar-texto" style="font-size:13px;color:var(--text-dark);line-height:1.5;"></p>
+        <div style="display:flex;justify-content:flex-end;gap:8px;">
+          <button id="modal-eliminar-cancel" style="background:none;border:1px solid var(--border-gray);border-radius:4px;padding:7px 16px;font-size:13px;cursor:pointer;">Cancelar</button>
+          <button id="modal-eliminar-ok" style="background:#c41520;color:white;border:none;border-radius:4px;padding:7px 16px;font-size:13px;font-weight:700;cursor:pointer;">Eliminar</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div id="toast" style="display:none"></div>
 </Layout>
 
 <script>
@@ -80,11 +125,40 @@ import Layout from '../layouts/layout.astro'
   )
 
   let allData = []
+  let todasLasPlantillas = []
+  let sucursalParaEliminar = null
+
+  function showToast(msg, type = 'success') {
+    const t = document.getElementById('toast')
+    t.textContent = msg
+    t.className = `toast ${type}`
+    t.style.display = 'block'
+    setTimeout(() => { t.style.display = 'none' }, 3000)
+  }
+
+  function openModal(id) { document.getElementById(id).style.display = 'flex' }
+  function closeModal(id) { document.getElementById(id).style.display = 'none' }
+
+  function generarSlug(nombre) {
+    return nombre
+      .toLowerCase()
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .replace(/[^a-z0-9\s-]/g, '')
+      .trim()
+      .replace(/\s+/g, '-')
+  }
 
   async function init() {
     const { data: session } = await db.auth.getSession()
     if (!session.session) { window.location.href = '/'; return }
     document.getElementById('auth-check').style.display = 'block'
+
+    const { data: plantillas } = await db.from('plantillas').select('id, nombre, slug').order('nombre')
+    todasLasPlantillas = plantillas || []
+    populatePlantillaFilter()
+    renderChecklistPlantillas()
+
     await loadSucursales()
   }
 
@@ -101,24 +175,30 @@ import Layout from '../layouts/layout.astro'
     }
 
     allData = data
-    populatePlantillaFilter(data)
     applyFilters()
   }
 
-  function populatePlantillaFilter(data) {
+  function populatePlantillaFilter() {
     const select = document.getElementById('filter-plantilla')
-    const nombres = new Set()
-    data.forEach(s => {
-      s.sucursal_plantillas.forEach(sp => {
-        if (sp.plantillas?.nombre) nombres.add(sp.plantillas.nombre)
-      })
-    })
-    nombres.forEach(nombre => {
+    todasLasPlantillas.forEach(p => {
       const opt = document.createElement('option')
-      opt.value = nombre
-      opt.textContent = nombre
+      opt.value = p.nombre
+      opt.textContent = p.nombre
       select.appendChild(opt)
     })
+  }
+
+  function renderChecklistPlantillas() {
+    const container = document.getElementById('nueva-plantillas')
+    container.innerHTML = todasLasPlantillas.map(p => `
+      <label style="display:flex;align-items:center;gap:10px;padding:10px 12px;border:1px solid var(--border-gray);border-radius:6px;cursor:pointer;">
+        <input type="checkbox" value="${p.id}" name="plantilla-check" style="width:16px;height:16px;accent-color:var(--carls-red);" />
+        <div>
+          <div style="font-size:13px;font-weight:700;color:var(--text-dark);">${p.nombre}</div>
+          <div style="font-size:11px;color:var(--text-muted);">${p.slug}</div>
+        </div>
+      </label>
+    `).join('')
   }
 
   function applyFilters() {
@@ -126,18 +206,10 @@ import Layout from '../layouts/layout.astro'
     const estado = document.getElementById('filter-estado').value
     const plantilla = document.getElementById('filter-plantilla').value
 
-    let filtered = allData.filter(s => {
-      const matchSearch = !q ||
-        s.nombre.toLowerCase().includes(q) ||
-        s.slug.toLowerCase().includes(q)
-
-      const matchEstado = !estado ||
-        (estado === 'activa' && s.activa) ||
-        (estado === 'inactiva' && !s.activa)
-
-      const matchPlantilla = !plantilla ||
-        s.sucursal_plantillas.some(sp => sp.plantillas?.nombre === plantilla)
-
+    const filtered = allData.filter(s => {
+      const matchSearch = !q || s.nombre.toLowerCase().includes(q) || s.slug.toLowerCase().includes(q)
+      const matchEstado = !estado || (estado === 'activa' && s.activa) || (estado === 'inactiva' && !s.activa)
+      const matchPlantilla = !plantilla || s.sucursal_plantillas.some(sp => sp.plantillas?.nombre === plantilla)
       return matchSearch && matchEstado && matchPlantilla
     })
 
@@ -150,7 +222,7 @@ import Layout from '../layouts/layout.astro'
     count.textContent = `${data.length} resultado${data.length !== 1 ? 's' : ''}`
 
     if (!data.length) {
-      tbody.innerHTML = '<tr><td colspan="5" class="loading-cell">No se encontraron sucursales con los filtros aplicados.</td></tr>'
+      tbody.innerHTML = '<tr><td colspan="5" class="loading-cell">No se encontraron sucursales.</td></tr>'
       return
     }
 
@@ -168,28 +240,140 @@ import Layout from '../layouts/layout.astro'
           <span class="status-badge ${s.activa ? 'active' : 'inactive'}"></span>
           ${s.activa ? 'Activa' : 'Inactiva'}
         </td>
-        <td>
-          <a href="/precios?sucursal=${s.slug}" class="action-link" title="Editar precios">
+        <td style="display:flex;gap:6px;align-items:center;">
+          <a href="/detalle-sucursal?sucursal=${s.slug}" class="action-link">
             <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
               <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
               <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
             </svg>
-            Precios
+            Ver
           </a>
+          <button class="btn-eliminar action-link" data-id="${s.id}" data-nombre="${s.nombre}" style="background:none;border:1px solid #c41520;color:#c41520;cursor:pointer;">
+            <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/>
+            </svg>
+            Eliminar
+          </button>
         </td>
       </tr>`
     }).join('')
+
+    document.querySelectorAll('.btn-eliminar').forEach(btn => {
+      btn.addEventListener('click', () => {
+        sucursalParaEliminar = btn.dataset.id
+        document.getElementById('modal-eliminar-texto').textContent =
+          `¿Seguro que deseas eliminar "${btn.dataset.nombre}"? Se eliminarán todos sus precios, upgrades y plantillas asignadas. Esta acción no se puede deshacer.`
+        openModal('modal-eliminar')
+      })
+    })
   }
+
+  async function crearSucursal() {
+    const nombre = document.getElementById('nueva-nombre').value.trim()
+    const slug = document.getElementById('nueva-slug').value.trim()
+    const checks = document.querySelectorAll('#nueva-plantillas input[type="checkbox"]:checked')
+
+    if (!nombre) { showToast('El nombre es requerido', 'error'); return }
+    if (!slug) { showToast('El slug es requerido', 'error'); return }
+
+    const btn = document.getElementById('modal-nueva-save')
+    btn.textContent = 'Creando...'
+    btn.disabled = true
+
+    const { data: nueva, error } = await db
+      .from('sucursales')
+      .insert({ nombre, slug, activa: true })
+      .select('id')
+      .single()
+
+    if (error || !nueva) {
+      showToast('Error al crear sucursal: ' + (error?.message || ''), 'error')
+      btn.textContent = 'Crear Sucursal'
+      btn.disabled = false
+      return
+    }
+
+    const sucursalId = nueva.id
+
+    for (const check of checks) {
+      const plantillaId = check.value
+
+      await db.from('sucursal_plantillas').insert({ sucursal_id: sucursalId, plantilla_id: plantillaId, activa: true })
+
+      const { data: productos } = await db.from('productos').select('id').eq('plantilla_id', plantillaId)
+
+      if (productos && productos.length) {
+        await db.from('precios').insert(
+          productos.map(p => ({ producto_id: p.id, sucursal_id: sucursalId, burger: 0, doble: null, combo: null, combo_doble: null }))
+        )
+      }
+
+      const { data: upgradesBase } = await db.from('upgrades').select('nombre, precio, orden').eq('plantilla_id', plantillaId).limit(10)
+      if (upgradesBase && upgradesBase.length) {
+        await db.from('upgrades').insert(
+          upgradesBase.map(u => ({ plantilla_id: plantillaId, sucursal_id: sucursalId, nombre: u.nombre, precio: u.precio, orden: u.orden }))
+        )
+      }
+    }
+
+    closeModal('modal-nueva')
+    document.getElementById('nueva-nombre').value = ''
+    document.getElementById('nueva-slug').value = ''
+    document.querySelectorAll('#nueva-plantillas input[type="checkbox"]').forEach(c => c.checked = false)
+    await loadSucursales()
+    showToast('Sucursal creada correctamente')
+    btn.textContent = 'Crear Sucursal'
+    btn.disabled = false
+  }
+
+  async function eliminarSucursal() {
+    if (!sucursalParaEliminar) return
+
+    const btn = document.getElementById('modal-eliminar-ok')
+    btn.textContent = 'Eliminando...'
+    btn.disabled = true
+
+    const { data: sps } = await db.from('sucursal_plantillas').select('plantilla_id').eq('sucursal_id', sucursalParaEliminar)
+
+    if (sps && sps.length) {
+      for (const sp of sps) {
+        const { data: productos } = await db.from('productos').select('id').eq('plantilla_id', sp.plantilla_id)
+        if (productos && productos.length) {
+          await db.from('precios').delete().eq('sucursal_id', sucursalParaEliminar).in('producto_id', productos.map(p => p.id))
+        }
+        await db.from('upgrades').delete().eq('sucursal_id', sucursalParaEliminar).eq('plantilla_id', sp.plantilla_id)
+      }
+      await db.from('sucursal_plantillas').delete().eq('sucursal_id', sucursalParaEliminar)
+    }
+
+    await db.from('sucursales').delete().eq('id', sucursalParaEliminar)
+
+    sucursalParaEliminar = null
+    closeModal('modal-eliminar')
+    await loadSucursales()
+    showToast('Sucursal eliminada correctamente')
+    btn.textContent = 'Eliminar'
+    btn.disabled = false
+  }
+
+  document.getElementById('btn-nueva-sucursal').addEventListener('click', () => openModal('modal-nueva'))
+  document.getElementById('modal-nueva-save').addEventListener('click', crearSucursal)
+  document.getElementById('modal-nueva-cancel').addEventListener('click', () => closeModal('modal-nueva'))
+  document.getElementById('modal-nueva-close').addEventListener('click', () => closeModal('modal-nueva'))
+  document.getElementById('modal-eliminar-ok').addEventListener('click', eliminarSucursal)
+  document.getElementById('modal-eliminar-cancel').addEventListener('click', () => closeModal('modal-eliminar'))
+  document.getElementById('modal-eliminar-close').addEventListener('click', () => closeModal('modal-eliminar'))
+
+  document.getElementById('btn-sugerir-slug').addEventListener('click', () => {
+    const nombre = document.getElementById('nueva-nombre').value.trim()
+    if (!nombre) { showToast('Escribe el nombre primero', 'error'); return }
+    document.getElementById('nueva-slug').value = generarSlug(nombre)
+  })
 
   document.getElementById('search').addEventListener('input', applyFilters)
   document.getElementById('filter-estado').addEventListener('change', applyFilters)
   document.getElementById('filter-plantilla').addEventListener('change', applyFilters)
-
-  document.getElementById('clear-search').addEventListener('click', () => {
-    document.getElementById('search').value = ''
-    applyFilters()
-  })
-
+  document.getElementById('clear-search').addEventListener('click', () => { document.getElementById('search').value = ''; applyFilters() })
   document.getElementById('clear-filters').addEventListener('click', () => {
     document.getElementById('search').value = ''
     document.getElementById('filter-estado').value = ''
