@@ -8,18 +8,8 @@ import Layout from "../layouts/layout.astro";
     <div class="card">
       <div class="section-header">
         <div style="display:flex;align-items:center;gap:12px;">
-          <a href="/sucursales" class="back-btn" title="Regresar">
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              width="16"
-              height="16"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              stroke-width="2.5"
-              stroke-linecap="round"
-              stroke-linejoin="round"
-            >
+          <a id="back-link" href="#" class="back-btn">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
               <polyline points="15 18 9 12 15 6"></polyline>
             </svg>
             Regresar
@@ -27,35 +17,16 @@ import Layout from "../layouts/layout.astro";
           <h2 id="page-title">Editor de Precios</h2>
         </div>
         <div class="header-actions">
-          <span
-            id="sucursal-badge"
-            style="font-size:11px;background:rgba(255,255,255,0.2);padding:3px 10px;border-radius:12px;"
-          ></span>
-          <button
-            id="save-btn"
-            style="background:white;color:var(--carls-red);border:none;padding:7px 18px;border-radius:4px;font-size:13px;font-weight:700;cursor:pointer;letter-spacing:0.05em;"
-          >
+          <span id="sucursal-badge" style="font-size:11px;background:rgba(255,255,255,0.2);padding:3px 10px;border-radius:12px;"></span>
+          <button id="save-btn" style="background:white;color:var(--carls-red);border:none;padding:7px 18px;border-radius:4px;font-size:13px;font-weight:700;cursor:pointer;letter-spacing:0.05em;">
             GUARDAR
           </button>
         </div>
       </div>
 
-      <div class="search-bar" style="justify-content:space-between;">
-        <span
-          id="plantilla-label"
-          style="font-size:12px;color:var(--text-muted);font-weight:600;"
-        ></span>
-        <div style="display:flex;gap:8px;align-items:center;">
-          <label style="font-size:12px;color:var(--text-muted);"
-            >Plantilla:</label
-          >
-          <select
-            id="plantilla-select"
-            style="font-size:12px;border:1px solid var(--border-gray);border-radius:4px;padding:4px 8px;"
-          >
-            <option value="">Cargando...</option>
-          </select>
-        </div>
+      <div class="search-bar" style="justify-content:space-between;align-items:center;">
+        <span style="font-size:12px;color:var(--text-muted);font-weight:600;">Vista de plantilla:</span>
+        <span id="plantilla-label" style="font-size:13px;font-weight:700;color:var(--text-dark);background:#f0f0f0;padding:4px 12px;border-radius:4px;"></span>
       </div>
 
       <div class="table-wrapper">
@@ -71,10 +42,7 @@ import Layout from "../layouts/layout.astro";
             </tr>
           </thead>
           <tbody id="precios-body">
-            <tr
-              ><td colspan="6" class="loading-cell">Cargando productos...</td
-              ></tr
-            >
+            <tr><td colspan="6" class="loading-cell">Cargando productos...</td></tr>
           </tbody>
         </table>
       </div>
@@ -102,15 +70,8 @@ import Layout from "../layouts/layout.astro";
         <h2>URL del Player</h2>
       </div>
       <div style="padding:16px;display:flex;align-items:center;gap:12px;">
-        <code
-          id="player-url"
-          style="flex:1;background:#f5f5f5;padding:8px 12px;border-radius:4px;font-size:12px;color:#333;"
-        ></code>
-        <button
-          id="copy-url-btn"
-          class="btn-primary"
-          style="white-space:nowrap;">Copiar URL</button
-        >
+        <code id="player-url" style="flex:1;background:#f5f5f5;padding:8px 12px;border-radius:4px;font-size:12px;color:#333;"></code>
+        <button id="copy-url-btn" class="btn-primary" style="white-space:nowrap;">Copiar URL</button>
       </div>
     </div>
   </div>
@@ -123,11 +84,10 @@ import Layout from "../layouts/layout.astro";
 
   const db = createClient(
     "https://gbklqpbcllhdixiuxwzt.supabase.co",
-    "sb_publishable_478TOeFf5POv09rZ58BeyQ_BA8rY8cf",
+    "sb_publishable_478TOeFf5POv09rZ58BeyQ_BA8rY8cf"
   );
 
   const PLAYER_BASE = "https://bmendez-admin.github.io/digital-signage-player/";
-
   const params = new URLSearchParams(window.location.search);
   const sucursalSlug = params.get("sucursal") || "demo-01";
 
@@ -142,31 +102,25 @@ import Layout from "../layouts/layout.astro";
     t.textContent = msg;
     t.className = `toast ${type}`;
     t.style.display = "block";
-    setTimeout(() => {
-      t.style.display = "none";
-    }, 3000);
+    setTimeout(() => { t.style.display = "none"; }, 3000);
   }
 
   async function init() {
     const { data: session } = await db.auth.getSession();
-    if (!session.session) {
-      window.location.href = "/";
-      return;
-    }
+    if (!session.session) { window.location.href = "/"; return; }
     document.getElementById("auth-check").style.display = "block";
+
+    document.getElementById("back-link").href = `/detalle-sucursal?sucursal=${sucursalSlug}`;
 
     const { data: suc } = await db
       .from("sucursales")
       .select("id, nombre")
       .eq("slug", sucursalSlug)
       .single();
-    if (!suc) {
-      showToast("Sucursal no encontrada", "error");
-      return;
-    }
+
+    if (!suc) { showToast("Sucursal no encontrada", "error"); return; }
 
     sucursalId = suc.id;
-    document.getElementById("page-title").textContent = "Editor de Precios";
     document.getElementById("sucursal-badge").textContent = suc.nombre;
 
     const { data: spData } = await db
@@ -174,45 +128,19 @@ import Layout from "../layouts/layout.astro";
       .select("plantilla_id, plantillas(id, nombre, slug)")
       .eq("sucursal_id", sucursalId);
 
-    const select = document.getElementById("plantilla-select");
-    select.innerHTML = "";
-
     if (!spData || !spData.length) {
-      select.innerHTML = "<option>Sin plantillas</option>";
+      document.getElementById("plantilla-label").textContent = "Sin plantillas";
       return;
     }
 
     const plantillaParam = params.get("plantilla");
+    const sp = spData.find(s => s.plantillas.slug === plantillaParam) || spData[0];
 
-    spData.forEach((sp) => {
-      const opt = document.createElement("option");
-      opt.value = sp.plantillas.slug;
-      opt.dataset.id = sp.plantillas.id;
-      opt.textContent = sp.plantillas.nombre;
-      if (plantillaParam && sp.plantillas.slug === plantillaParam) {
-        opt.selected = true;
-      }
-      select.appendChild(opt);
-    });
+    plantillaSlug = sp.plantillas.slug;
+    plantillaId = sp.plantillas.id;
 
-    const selectedOpt = select.options[select.selectedIndex];
-    plantillaSlug = selectedOpt.value;
-    plantillaId = selectedOpt.dataset.id;
-    await loadPrecios();
-    updatePlayerUrl();
+    document.getElementById("plantilla-label").textContent = sp.plantillas.nombre;
 
-    select.addEventListener("change", () => {
-      const opt = select.options[select.selectedIndex];
-      plantillaSlug = opt.value;
-      plantillaId = opt.dataset.id;
-      pendingChanges = {};
-      pendingUpgrades = {};
-      loadPrecios();
-      updatePlayerUrl();
-    });
-
-    plantillaSlug = spData[0].plantillas.slug;
-    plantillaId = spData[0].plantillas.id;
     await loadPrecios();
     updatePlayerUrl();
   }
@@ -230,8 +158,7 @@ import Layout from "../layouts/layout.astro";
 
   async function loadPrecios() {
     const tbody = document.getElementById("precios-body");
-    tbody.innerHTML =
-      '<tr><td colspan="6" class="loading-cell">Cargando...</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="6" class="loading-cell">Cargando...</td></tr>';
 
     const { data: productos } = await db
       .from("productos")
@@ -240,16 +167,13 @@ import Layout from "../layouts/layout.astro";
       .order("orden");
 
     if (!productos || !productos.length) {
-      tbody.innerHTML =
-        '<tr><td colspan="6" class="loading-cell">No hay productos en esta plantilla.</td></tr>';
+      tbody.innerHTML = '<tr><td colspan="6" class="loading-cell">No hay productos en esta plantilla.</td></tr>';
       return;
     }
 
-    tbody.innerHTML = productos
-      .map((p) => {
-        const precio =
-          p.precios.find((pr) => pr.sucursal_id === sucursalId) || {};
-        const field = (key, val) => `
+    tbody.innerHTML = productos.map(p => {
+      const precio = p.precios.find(pr => pr.sucursal_id === sucursalId) || {};
+      const field = (key, val) => `
         <input type="number"
           class="price-input"
           data-producto="${p.id}"
@@ -262,7 +186,7 @@ import Layout from "../layouts/layout.astro";
           style="width:90px;text-align:right;"
         />`;
 
-        return `<tr>
+      return `<tr>
         <td style="color:var(--text-muted);font-weight:700;">${p.numero}</td>
         <td>
           <strong>${p.nombre}</strong>
@@ -273,11 +197,10 @@ import Layout from "../layouts/layout.astro";
         <td>${field("combo", precio.combo)}</td>
         <td>${field("combo_doble", precio.combo_doble)}</td>
       </tr>`;
-      })
-      .join("");
+    }).join("");
 
-    document.querySelectorAll(".price-input").forEach((input) => {
-      input.addEventListener("input", (e) => {
+    document.querySelectorAll(".price-input").forEach(input => {
+      input.addEventListener("input", e => {
         const productoId = e.target.dataset.producto;
         const field = e.target.dataset.field;
         const val = e.target.value === "" ? null : parseFloat(e.target.value);
@@ -301,14 +224,11 @@ import Layout from "../layouts/layout.astro";
 
     const tbody = document.getElementById("upgrades-body");
     if (!upgrades || !upgrades.length) {
-      tbody.innerHTML =
-        '<tr><td colspan="2" class="loading-cell">Sin upgrades.</td></tr>';
+      tbody.innerHTML = '<tr><td colspan="2" class="loading-cell">Sin upgrades.</td></tr>';
       return;
     }
 
-    tbody.innerHTML = upgrades
-      .map(
-        (u) => `
+    tbody.innerHTML = upgrades.map(u => `
       <tr>
         <td><strong>${u.nombre}</strong></td>
         <td>
@@ -321,12 +241,10 @@ import Layout from "../layouts/layout.astro";
           />
         </td>
       </tr>
-    `,
-      )
-      .join("");
+    `).join("");
 
-    document.querySelectorAll(".upgrade-input").forEach((input) => {
-      input.addEventListener("input", (e) => {
+    document.querySelectorAll(".upgrade-input").forEach(input => {
+      input.addEventListener("input", e => {
         const id = e.target.dataset.upgradeId;
         pendingUpgrades[id] = parseFloat(e.target.value);
         e.target.style.borderColor = "var(--carls-yellow)";
@@ -347,26 +265,21 @@ import Layout from "../layouts/layout.astro";
         body: JSON.stringify({
           precios: pendingChanges,
           upgrades: pendingUpgrades,
-          sucursalId,
-        }),
+          sucursalId
+        })
       });
 
       const data = await res.json();
 
       if (!res.ok || data.error) {
-        showToast(
-          "Error al guardar: " + (data.error || "intenta de nuevo"),
-          "error",
-        );
+        showToast("Error al guardar: " + (data.error || "intenta de nuevo"), "error");
       } else {
         pendingChanges = {};
         pendingUpgrades = {};
-        document
-          .querySelectorAll(".price-input, .upgrade-input")
-          .forEach((i) => {
-            i.style.borderColor = "";
-            i.style.background = "";
-          });
+        document.querySelectorAll(".price-input, .upgrade-input").forEach(i => {
+          i.style.borderColor = "";
+          i.style.background = "";
+        });
         showToast("Precios actualizados correctamente");
       }
     } catch (e) {
